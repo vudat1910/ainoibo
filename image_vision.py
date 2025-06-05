@@ -32,19 +32,19 @@ FOLDERS = {
     "Quy trình quản lý VHKT": {
         "path": "data/Quy_trinh_VHKT",
         "file_type": "pdf",
-        "model": "gemma3:4b",
+        "model": "gemma3:12b",
         "faiss_index": "faiss_index_vhkt"
     },
     "Quy định An toàn thông tin": {
         "path": "data/Quyet_dinh_ATTT",
         "file_type": "pdf",
-        "model": "gemma3:4b",
+        "model": "gemma3:12b",
         "faiss_index": "faiss_index_attt"
     },
     "Quy trình/Quy định khác": {
         "path": "data/Cloud",
         "file_type": "csv",
-        "model": "gemma3:4b",
+        "model": "gemma3.1:8b",
         "faiss_index": "faiss_index_cloud"
     },
 }
