@@ -1,0 +1,14 @@
+fastapi
+langchain_ollama
+pydantic
+langchain
+pypdf
+langchain_community
+langchain_text_splitter
+langchain_huggingface
+langchain_core
+torch
+typing
+ollama
+base64
+io
