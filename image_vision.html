@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AINoiBo</title>
+    <style>
+        body {
+            font-family: 'arial', sans-serif;
+        }
+        .chat-popup {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: flex;
+            z-index: 1000;
+            transition: width 0.3s ease;
+        }
+        .chat-popup.sidebar-open {
+            width: 470px;
+            transition: width 0.3s ease;
+        }
+        .sidebar {
+            display: none;
+            width: 120px;
+            background: #f4f4f4;
+            border-right: 1px solid #ccc;
+            border-radius: 10px 0 0 10px;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        .sidebar.open {
+            display: block;
+        }
+        .sidebar h4 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            color: #333;
+        }
+        .sidebar .category-item {
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        .sidebar .category-item:hover {
+            background: #e0e0e0;
+        }
+        .sidebar .category-item.selected {
+            background: #1a73e8;
+            color: white;
+        }
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            padding: 10px;
+            background: #1a73e8;
+            color: white;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-header .category-toggle {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .chat-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+        .chat-header .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .chat-header .refresh-btn,
+        .chat-header .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 4px;
+            margin: 0;
+            transition: color 0.2s ease;
+        }
+        .chat-header .refresh-btn:hover,
+        .chat-header .close-btn:hover {
+            color: #ccc;
+        }
+        .chat-body {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background: #f9f9f9;
+        }
+        .chat-body.dragover {
+            background: #e1f0fa;
+            border: 2px dashed #1a73e8;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+        }
+        .chat-message.user {
+            text-align: right;
+        }
+        .chat-message.user .message-content {
+            background: #e1f0fa;
+            border-radius: 10px;
+            padding: 8px 12px;
+            display: inline-block;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .chat-message.user .image-content {
+            max-width: 200px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+        .chat-message.assistant {
+            text-align: left;
+        }
+        .chat-message.assistant .message-content {
+            background: #fff;
+            border: 1px solid #e8ecef;
+            border-radius: 10px;
+            padding: 8px 12px;
+            display: inline-block;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .chat-message.assistant .loading-icon {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .suggestions {
+            margin-top: 5px;
+            margin-left: 10px;
+        }
+        .suggestion-button {
+            background: none;
+            border: none;
+            color: #1a73e8;
+            text-decoration: underline;
+            cursor: pointer;
+            display: block;
+            text-align: left;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .suggestion-button:hover {
+            color: #1557b0;
+        }
+        .chat-footer {
+            padding: 10px;
+            background: #f9f9f9;
+            box-sizing: border-box;
+        }
+        .chat-footer .input-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 5px;
+            background: #fff;
+        }
+        .chat-footer .input-container .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        .chat-footer .input-container .image-preview img {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 5px;
+            object-fit: contain;
+            position: relative;
+        }
+        .chat-footer .input-container .image-preview .remove-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 16px;
+            height: 16px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .chat-footer .input-container .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        .chat-footer .input-container input[type="text"] {
+            width: 100%;
+            margin: 0;
+            padding: 8px 40px 8px 30px;
+            box-sizing: border-box;
+            border: none;
+            border-radius: 5px;
+            outline: none;
+        }
+        .chat-footer .input-container .add-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            cursor: pointer;
+            color: #1a73e8 !important;
+            z-index: 1;
+            font-weight: 100;
+            line-height: 1;
+        }
+        .chat-footer .input-container .add-icon:hover {
+            color: #1557b0 !important;
+        }
+        .chat-footer .input-container .add-icon span {
+            color: #1a73e8 !important;
+        }
+        .chat-footer .input-container .add-icon span:hover {
+            color: #1557b0 !important;
+        }
+        .chat-footer .input-container .dropdown {
+            display: none;
+            position: absolute;
+            left: 0;
+            bottom: 100%;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1001;
+        }
+        .chat-footer .input-container .dropdown.open {
+            display: block;
+        }
+        .chat-footer .input-container .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .chat-footer .input-container .dropdown-item:hover {
+            background: #e0e0e0;
+        }
+        .chat-footer .input-container input[type="file"] {
+            display: none;
+        }
+        .chat-footer .input-container .send-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #1a73e8;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .chat-footer .input-container .send-icon:hover {
+            color: #1557b0;
+        }
+        .open-chat-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .open-chat-btn:hover {
+            background: #1557b0;
+        }
+        .category-notification {
+            text-align: center;
+            font-size: 12px;
+            color: #333;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <button class="open-chat-btn" onclick="openChat()">💬</button>
+    <div id="chatPopup" class="chat-popup">
+        <div class="sidebar" id="sidebar">
+            <h4>Danh mục</h4>
+            <div class="category-item" onclick="selectCategory('Quy trình quản lý VHKT')">Quy trình quản lý VHKT</div>
+            <div class="category-item" onclick="selectCategory('Quy định An toàn thông tin')">Quy định An toàn thông tin</div>
+            <div class="category-item" onclick="selectCategory('Quy trình/Quy định khác')">Quy trình/Quy định khác</div>
+        </div>
+        <div class="chat-container">
+            <div class="chat-header">
+                <button class="category-toggle" onclick="toggleSidebar()">☰</button>
+                <h3>AINoiBo</h3>
+                <div class="header-actions">
+                    <button class="refresh-btn" onclick="refreshChat()">↻</button>
+                    <button class="close-btn" onclick="closeChat()">✖</button>
+                </div>
+            </div>
+            <div class="chat-body" id="chatBody">
+                <div class="chat-message assistant">
+                    <div class="message-content">
+                        Xin chào, tôi có thể giúp gì cho bạn? Vui lòng chọn danh mục và nhập câu hỏi hoặc gửi hình ảnh.
+                    </div>
+                </div>
+                <div class="chat-message assistant">
+                    <div class="message-content">
+                        <strong>Câu hỏi thường gặp:</strong><br>
+                        <button class="suggestion-button" onclick="fillInput('Bạn là ai?')">Bạn là ai?</button>
+                        <button class="suggestion-button" onclick="fillInput('Cho tôi địa chỉ IP của máy ảo CSKHTT-Mvas-app1-win.')">Cho tôi địa chỉ IP của máy ảo CSKHTT-Mvas-app1-win.</button>
+                        <button class="suggestion-button" onclick="fillInput('Quy trình vận hành kỹ thuật gồm những bước nào?')">Quy trình vận hành kỹ thuật gồm những bước nào?</button>
+                    </div>
+                </div>
+                <div id="categoryNotification" class="category-notification"></div>
+            </div>
+            <div class="chat-footer">
+                <div class="input-container" id="inputContainer">
+                    <div class="input-wrapper">
+                        <span class="add-icon" onclick="toggleDropdown()"><span>➕</span></span>
+                        <div class="dropdown" id="fileDropdown">
+                            <div class="dropdown-item" onclick="triggerImageUpload()">Image</div>
+                            <div class="dropdown-item" onclick="triggerFileUpload()">Upload Files</div>
+                        </div>
+                        <input type="text" id="chatInput" placeholder="Nhập câu hỏi..." onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)" multiple>
+                        <input type="file" id="fileInput" accept=".pdf,.csv" onchange="handleFileUpload(event)" multiple>
+                        <button class="send-icon" onclick="sendMessage()">➤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = `session_${Math.floor(Math.random() * 10000)}`;
+        let selectedCategory = localStorage.getItem('selectedCategory') || '';
+        let selectedImages = []; 
+
+        function openChat() {
+            document.getElementById('chatPopup').style.display = 'flex';
+            if (selectedCategory) {
+                selectCategory(selectedCategory, false);
+            }
+        }
+
+        function closeChat() {
+            document.getElementById('chatPopup').style.display = 'none';
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('chatPopup').classList.remove('sidebar-open');
+            selectedImages = [];
+            clearImagePreview();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const chatPopup = document.getElementById('chatPopup');
+            sidebar.classList.toggle('open');
+            chatPopup.classList.toggle('sidebar-open');
+        }
+
+        function selectCategory(category, toggle = true) {
+            selectedCategory = category;
+            localStorage.setItem('selectedCategory', category);
+            const items = document.querySelectorAll('.category-item');
+            items.forEach(item => {
+                item.classList.remove('selected');
+                if (item.textContent === category) {
+                    item.classList.add('selected');
+                }
+            });
+
+            const notification = document.getElementById('categoryNotification');
+            notification.textContent = `Bạn đã chọn danh mục: ${category}`;
+
+            if (toggle) {
+                toggleSidebar();
+            }
+        }
+
+        function refreshChat() {
+            sessionId = `session_${Math.floor(Math.random() * 10000)}`;
+            selectedImages = [];
+            clearImagePreview();
+            const chatBody = document.getElementById('chatBody');
+            chatBody.innerHTML = `
+                <div class="chat-message assistant">
+                    <div class="message-content">
+                        Xin chào, tôi có thể giúp gì cho bạn? Vui lòng chọn danh mục và nhập câu hỏi hoặc gửi hình ảnh.
+                    </div>
+                </div>
+                <div class="chat-message assistant">
+                    <div class="message-content">
+                        <strong>Câu hỏi thường gặp:</strong><br>
+                        <button class="suggestion-button" onclick="fillInput('Bạn là ai?')">Bạn là ai?</button>
+                        <button class="suggestion-button" onclick="fillInput('Cho tôi địa chỉ IP của máy ảo CSKHTT-Mvas-app1-win.')">Cho tôi địa chỉ IP của máy ảo CSKHTT-Mvas-app1-win.</button>
+                        <button class="suggestion-button" onclick="fillInput('Quy trình vận hành kỹ thuật gồm những bước nào?')">Quy trình vận hành kỹ thuật gồm những bước nào?</button>
+                    </div>
+                </div>
+                <div id="categoryNotification" class="category-notification">${selectedCategory ? `Bạn đã chọn danh mục: ${selectedCategory}` : ''}</div>
+            `;
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        function fillInput(question) {
+            document.getElementById('chatInput').value = question;
+            sendMessage();
+        }
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('fileDropdown');
+            dropdown.classList.toggle('open');
+        }
+
+        function triggerImageUpload() {
+            document.getElementById('imageInput').click();
+            toggleDropdown();
+        }
+
+        function triggerFileUpload() {
+            document.getElementById('fileInput').click();
+            toggleDropdown();
+        }
+
+        function clearImagePreview() {
+            console.log('Attempting to clear image preview...');
+            const inputContainer = document.getElementById('inputContainer');
+            const imagePreviews = inputContainer.getElementsByClassName('image-preview');
+            while (imagePreviews.length > 0) {
+                console.log('Removing image-preview:', imagePreviews[0]);
+                inputContainer.removeChild(imagePreviews[0]);
+            }
+            if (inputContainer.querySelector('.image-preview')) {
+                console.warn('Vẫn còn image-preview sau khi xóa, thử xóa lại...');
+                const remainingPreviews = inputContainer.getElementsByClassName('image-preview');
+                while (remainingPreviews.length > 0) {
+                    inputContainer.removeChild(remainingPreviews[0]);
+                }
+            }
+            console.log('After clearImagePreview, inputContainer content:', inputContainer.innerHTML);
+        }
+
+        function updateImagePreview() {
+            const inputContainer = document.getElementById('inputContainer');
+            clearImagePreview();
+
+            if (selectedImages.length === 0) return;
+
+            const imagePreview = document.createElement('div');
+            imagePreview.className = 'image-preview';
+            selectedImages.forEach((image, index) => {
+                const imgWrapper = document.createElement('div');
+                imgWrapper.style.position = 'relative';
+                imgWrapper.innerHTML = `<img src="${URL.createObjectURL(image)}" /><button class="remove-btn" onclick="removeImage(${index})">x</button>`;
+                imagePreview.appendChild(imgWrapper);
+            });
+            inputContainer.insertBefore(imagePreview, inputContainer.querySelector('.input-wrapper'));
+        }
+
+        function removeImage(index) {
+            selectedImages.splice(index, 1);
+            updateImagePreview();
+        }
+
+        function handleImageUpload(event) {
+            const files = Array.from(event.target.files);
+            selectedImages = [...selectedImages, ...files];
+            updateImagePreview();
+        }
+
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                const chatBody = document.getElementById('chatBody');
+                const fileMessage = document.createElement('div');
+                fileMessage.className = 'chat-message user';
+                fileMessage.innerHTML = `<div class="message-content">Đã chọn ${files.length} file: ${Array.from(files).map(f => f.name).join(', ')}</div>`;
+                chatBody.insertBefore(fileMessage, document.getElementById('categoryNotification'));
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+        }
+
+        const chatBody = document.getElementById('chatBody');
+        chatBody.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            chatBody.classList.add('dragover');
+        });
+
+        chatBody.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            chatBody.classList.add('dragover');
+        });
+
+        chatBody.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            chatBody.classList.remove('dragover');
+        });
+
+        chatBody.addEventListener('drop', (e) => {
+            e.preventDefault();
+            chatBody.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+            if (files.length > 0) {
+                selectedImages = [...selectedImages, ...files];
+                updateImagePreview();
+            } else {
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'chat-message assistant';
+                errorMessage.innerHTML = `<div class="message-content">Vui lòng chỉ kéo thả file hình ảnh!</div>`;
+                chatBody.insertBefore(errorMessage, document.getElementById('categoryNotification'));
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const imageInput = document.getElementById('imageInput');
+            const fileInput = document.getElementById('fileInput');
+            const question = input.value.trim();
+            const files = fileInput.files;
+
+            input.value = '';
+
+            if (!selectedCategory) {
+                const chatBody = document.getElementById('chatBody');
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'chat-message assistant';
+                errorMessage.innerHTML = `<div class="message-content">Vui lòng chọn danh mục!</div>`;
+                chatBody.insertBefore(errorMessage, document.getElementById('categoryNotification'));
+                chatBody.scrollTop = chatBody.scrollHeight;
+                return;
+            }
+
+            if (!question && selectedImages.length === 0 && !files.length) return;
+
+            const chatBody = document.getElementById('chatBody');
+
+            if (question) {
+                const userMessage = document.createElement('div');
+                userMessage.className = 'chat-message user';
+                userMessage.innerHTML = `<div class="message-content">${question}</div>`;
+                chatBody.insertBefore(userMessage, document.getElementById('categoryNotification'));
+            }
+            if (selectedImages.length > 0) {
+                console.log('Displaying images in chat body:', selectedImages.length);
+                selectedImages.forEach(image => {
+                    const imageMessage = document.createElement('div');
+                    imageMessage.className = 'chat-message user';
+                    imageMessage.innerHTML = `<img class="image-content" src="${URL.createObjectURL(image)}"/>`;
+                    chatBody.insertBefore(imageMessage, document.getElementById('categoryNotification'));
+                });
+                console.log('Clearing preview after displaying images...');
+                clearImagePreview();
+            }
+
+            const loadingMessage = document.createElement('div');
+            loadingMessage.className = 'chat-message assistant';
+            loadingMessage.id = 'loadingMessage';
+            loadingMessage.innerHTML = `<div class="message-content"><span class="loading-icon"></span></div>`;
+            chatBody.insertBefore(loadingMessage, document.getElementById('categoryNotification'));
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            const formData = new FormData();
+            formData.append('session_id', sessionId);
+            formData.append('category', selectedCategory);
+            formData.append('question', question || (selectedImages.length > 0 ? 'Hình ảnh này có gì?' : ''));
+            if (selectedImages.length > 0) {
+                selectedImages.forEach((image, index) => {
+                    formData.append(`image${index}`, image);
+                });
+            }
+
+            try {
+                const endpoint = selectedImages.length > 0 ? 'http://localhost:8000/chat_with_image' : 'http://localhost:8000/chat';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                const assistantMessage = document.createElement('div');
+                assistantMessage.className = 'chat-message assistant';
+                let answerHtml = data.answer;
+                if (data.sources && data.sources.length > 0) {
+                    answerHtml += `<br><br><strong>Nguồn:</strong> ${data.sources.join(', ')}`;
+                }
+                assistantMessage.innerHTML = `<div class="message-content">${answerHtml}</div>`;
+                chatBody.replaceChild(assistantMessage, document.getElementById('loadingMessage'));
+
+                if (data.suggestions && data.suggestions.length > 0) {
+                    const suggestionsDiv = document.createElement('div');
+                    suggestionsDiv.className = 'suggestions';
+                    data.suggestions.forEach(suggestion => {
+                        const button = document.createElement('button');
+                        button.className = 'suggestion-button';
+                        button.textContent = suggestion;
+                        button.onclick = () => fillInput(suggestion);
+                        suggestionsDiv.appendChild(button);
+                    });
+                    assistantMessage.appendChild(suggestionsDiv);
+                }
+
+                chatBody.scrollTop = chatBody.scrollHeight;
+            } catch (error) {
+                console.error('Lỗi:', error);
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'chat-message assistant';
+                errorMessage.innerHTML = `<div class="message-content">Lỗi khi xử lý yêu cầu: ${error.message}</div>`;
+                chatBody.replaceChild(errorMessage, document.getElementById('loadingMessage'));
+                chatBody.scrollTop = chatBody.scrollHeight;
+            } finally {
+                console.log('Resetting selectedImages and inputs...');
+                selectedImages = [];
+                imageInput.value = '';
+                fileInput.value = '';
+                clearImagePreview();
+            }
+        }
+    </script>
+</body>
+</html>
